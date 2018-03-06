@@ -38,7 +38,8 @@ int main()
     bind(udpSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
 
     nextSegment = 0;
-    while(1){
+    while(nextSegment < 5)
+    {
         struct dataPacketHdr hdr;
         uint16_t endOfPacket;
         struct sockaddr_in clientAddr;
@@ -54,7 +55,7 @@ int main()
             {
                 if(hdr.segNum != nextSegment - 1)
                 {
-                    printf("ERROR: Server expected %d segment, but received %d segment\n", nextSegment, hdr.segNum);
+                    printf("ERROR: Client sent segment %d instead of %d.\n", nextSegment, hdr.segNum);
 
                     // TODO: Transmit reject packet (out of sequence error)
 
@@ -62,7 +63,7 @@ int main()
                 }
                 else
                 {
-                    printf("ERROR: Server got a duplicate packet (segment %d)\n", hdr.segNum);
+                    printf("ERROR: Client sent segment %d again.\n", hdr.segNum);
 
                     // TODO: Transmit reject packet (duplicate packet)
 
@@ -76,8 +77,10 @@ int main()
                 clientId = hdr.clientId;
             }
 
+            printf("Message OK. Sending ACK.\n\n");
             // Send acknowledgement packet to client
-            sendAckPacket(clientId, hdr.segNum, &clientAddr)
+            sendAckPacket(clientId, hdr.segNum, &clientAddr);
+            nextSegment++;
         }
         else
         {
@@ -108,25 +111,32 @@ int recvDataPacket(struct dataPacketHdr *hdr, uint8_t *payload, uint16_t *endOfP
 
 
     printf("Received Data Packet:\n");
-    printf("  SOP        : 0x%X\n", hdr->startOfPacket);
-    printf("  ClientID   : 0x%X\n", hdr->clientId);
-    printf("  PktType    : 0x%X\n", hdr->packetType);
-    printf("  SegNum     : 0x%X\n", hdr->segNum);
-    printf("  PayLoadLen : %d\n", hdr->payloadLength);
+    printf(" SOP: 0x%X,", hdr->startOfPacket);
+    printf(" ClientID: 0x%X,", hdr->clientId);
+    printf(" PktType: 0x%X,", hdr->packetType);
+    printf(" SegNum: 0x%X,", hdr->segNum);
+    printf(" PayLoadLen: %d,", hdr->payloadLength);
 
     // Check if the length field in the packet is consistent with the packet size
     if(hdr->payloadLength != nBytes - sizeof(struct dataPacketHdr) - 2)
+    {
+        printf("\n");
+        printf("ERROR: Length mismatch\n");
         return REJECTION_CODE__LENGTH_MISMATCH;
+    }
 
     // Copy payload in buffer to the payload destination address
     memcpy(payload, inBuffer + sizeof(struct dataPacketHdr), hdr->payloadLength);
 
-    printf("  PayLoad    : %s\n", payload);
-    printf("  EOP        : 0x%X\n", *endOfPacket);
+    printf(" EOP: 0x%X\n", *endOfPacket);
+    printf(" PayLoad: %s\n", payload);
 
     // Validate end-of-packet marker
     if(*endOfPacket != 0xFFFF)
+    {
+        printf("ERROR: End of packet marker not found\n");
         return REJECTION_CODE__END_OF_PACKET_MISSING;
+    }
 
     // Packet has no structural errors
     return 0;

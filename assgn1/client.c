@@ -24,7 +24,7 @@ struct sockaddr_in serverAddr;
 int main()
 {
     uint8_t segNum;
-    uint8_t msgLen;
+    uint16_t msgLen;
     FILE *f = fopen("message.txt", "r");
     struct timeval timeout;
     uint8_t payloadBuffer[256];
@@ -54,10 +54,10 @@ int main()
     for(int i = 0; i < 5; i++)
     {
         int try;
-        msgLen = 1 + rand() * 254 / RAND_MAX;
+        msgLen = 1 + (rand() * 254ull) / RAND_MAX;
         fread(payloadBuffer, msgLen - 1, 1, f);
 
-        payloadBuffer[msgLen] = '\0';
+        payloadBuffer[msgLen - 1] = '\0';
 
         printf("Sending segment %d to server\n", i);
 
