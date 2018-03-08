@@ -13,7 +13,7 @@
 #define MAX_TRIES (4)
 
 void sendDataPacket(uint8_t segNum, uint8_t *payloadBuffer, uint8_t payloadLength);
-int recvRespPacket();
+uint16_t recvRespPacket();
 
 uint8_t outBuffer[1024];
 uint8_t inBuffer[1024];
@@ -54,6 +54,9 @@ int main()
     for(int i = 0; i < 5; i++)
     {
         int try;
+        if(i == 2)
+            continue;
+
         msgLen = 1 + (rand() * 254ull) / RAND_MAX;
         fread(payloadBuffer, msgLen - 1, 1, f);
 
@@ -63,14 +66,18 @@ int main()
 
         for(try = 0; try < MAX_TRIES; try++)
         {
-            int8_t respCode;
+            uint16_t respCode;
 
             sendDataPacket(i, payloadBuffer, msgLen);
             
             respCode = recvRespPacket();
-            if(respCode >= 0)
+            if(respCode == 0)
             {
                 break;
+            }
+            else if(respCode < 0xFFFF)
+            {
+                return 0;
             }
             else
             {
@@ -116,7 +123,7 @@ void sendDataPacket(uint8_t segNum, uint8_t *payloadBuffer, uint8_t payloadLengt
     sendto(clientSocket, outBuffer, nBytes, 0, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 }
 
-int recvRespPacket()
+uint16_t recvRespPacket()
 {
     int nBytes;
 
@@ -125,7 +132,7 @@ int recvRespPacket()
     if(nBytes == -1)
     {
         printf("Timeout waiting for ACK from server\n");
-        return -1;
+        return 0xFFFF;
     }
     else if(nBytes == sizeof(struct ackPacket))
     {
@@ -136,7 +143,10 @@ int recvRespPacket()
     }
     else if(nBytes == sizeof(struct rejectPacket))
     {
-        return 2;
+        struct rejectPacket *rej = (struct rejectPacket *) inBuffer;
+        printf("Received REJECT packet: SOP 0x%X, Client 0x%X, Type 0x%X, rejectSubCode 0x%X, recvSegNum 0x%X, EOP 0x%X\n",
+            rej->startOfPacket, rej->clientId, rej->packetType, rej->rejectSubCode, rej->recvSegNum, rej->endOfPacket);
+        return rej->rejectSubCode;
     }
     else
     {

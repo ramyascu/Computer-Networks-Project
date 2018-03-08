@@ -1,0 +1,8 @@
+gcc server.c -o bin/server
+gcc client.c -o bin/client
+gcc bad_server.c -o bin/bad_server
+gcc bad_client_case1.c -o bin/bad_client_case1
+gcc bad_client_case2.c -o bin/bad_client_case2
+gcc bad_client_case3.c -o bin/bad_client_case3
+gcc bad_client_case4.c -o bin/bad_client_case4
+
