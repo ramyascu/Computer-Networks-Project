@@ -55,7 +55,7 @@ int main()
     {
         int try;
         if(i == 2)
-            continue;
+            continue;  // do not send packet for segNum == 2
 
         msgLen = 1 + (rand() * 254ull) / RAND_MAX;
         fread(payloadBuffer, msgLen - 1, 1, f);

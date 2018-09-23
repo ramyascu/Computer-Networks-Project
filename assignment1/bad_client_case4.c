@@ -71,7 +71,7 @@ int main()
             respCode = recvRespPacket();
             if(respCode == 0)
             {
-                if(i != 1)
+                if(i != 1)      // Resend packet 1, even after receiving ACK.
                     break;
             }
             else if(respCode < 0xFFFF)

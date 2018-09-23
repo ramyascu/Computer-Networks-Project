@@ -9,21 +9,23 @@
 #include <stdint.h>
 #include "common.h"
 
+// Global Variables
 int udpSocket;
 uint8_t inBuffer[1024];
 
-
+// function declarations
 int recvDataPacket(struct dataPacketHdr *hdr, uint8_t *payload, uint16_t *endOfPacket, struct sockaddr_in *clientAddr);
 void sendRejectPacket(uint8_t clientId, uint16_t rejectSubCode, uint8_t recvSegNum, struct sockaddr_in *clientAddr);
 void sendAckPacket(uint8_t clientId, uint8_t recvSegNum, struct sockaddr_in *clientAddr);
 
+// main function
 int main()
 {
     int nBytes;
-    struct sockaddr_in serverAddr;
+    struct sockaddr_in serverAddr; // variable to store server address
     uint8_t clientId;
-    uint8_t nextSegment;
-    uint8_t try;
+    uint8_t nextSegment;            // expected segment number
+    uint8_t try;                    // Client re-transmission counter
     uint8_t payloadBuffer[256];
 
     /*Create UDP socket*/
@@ -38,6 +40,7 @@ int main()
     /*Bind socket with address struct*/
     bind(udpSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
 
+// Receive 5 packets from the client
     nextSegment = 0;
     try = 0;
     while(nextSegment < 5)
@@ -57,28 +60,36 @@ int main()
             {
                 if(hdr.segNum != nextSegment - 1)
                 {
-                    printf("ERROR: Client sent segment %d instead of %d.\n", nextSegment, hdr.segNum);
+                    printf("ERROR: Out of sequence - Client sent segment %d instead of %d.\n", hdr.segNum, nextSegment);
 
-                    // TODO: Transmit reject packet (out of sequence error)
+                    //Transmit reject packet (out of sequence error)
+                    sendRejectPacket(clientId, REJECTION_CODE__OUT_OF_SEQUENCE, hdr.segNum, &clientAddr);
 
                     continue;
                 }
                 else
                 {
-                    printf("ERROR: Client sent segment %d again.\n", hdr.segNum);
+                    printf("ERROR: Duplicate Packet - Client sent segment %d again.\n", hdr.segNum);
 
-                    // TODO: Transmit reject packet (duplicate packet)
+                    //Transmit reject packet (duplicate packet)
+                    sendRejectPacket(clientId, REJECTION_CODE__DUPLICATE_PACKET, hdr.segNum, &clientAddr);
 
                     continue;
                 }
             }
 
-
             if(nextSegment == 0)
             {
                 clientId = hdr.clientId;
             }
+/*
+        packet 0: ACK is sent immediately
+        packet 1: ACK is sent for the first retry
+        packet 2: ACK is sent for the second retry
+        packet 3: ACK is sent for the third retry
+        packet 4: ACK is not sent even after third retry. The client gives up and says server is not responsive.
 
+*/
             if((nextSegment == 1 && try < 1) ||
                 (nextSegment == 2 && try < 2) ||
                 (nextSegment == 3 && try < 3) ||
@@ -97,7 +108,8 @@ int main()
         }
         else
         {
-            // TODO: Send appropriate reject packet for packet error
+            // Send appropriate reject packet for packet error
+            sendRejectPacket(clientId, recvStatus, hdr.segNum, &clientAddr);
         }
     }
 
@@ -142,12 +154,12 @@ int recvDataPacket(struct dataPacketHdr *hdr, uint8_t *payload, uint16_t *endOfP
     memcpy(payload, inBuffer + sizeof(struct dataPacketHdr), hdr->payloadLength);
 
     printf(" EOP: 0x%X\n", *endOfPacket);
-    printf(" PayLoad: %s\n", payload);
+    printf(" PayLoad: \"%s\"\n", payload);
 
     // Validate end-of-packet marker
     if(*endOfPacket != 0xFFFF)
     {
-        printf("ERROR: End of packet marker not found\n");
+        printf("ERROR: End of packet missing\n");
         return REJECTION_CODE__END_OF_PACKET_MISSING;
     }
 

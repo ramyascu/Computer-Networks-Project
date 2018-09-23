@@ -66,7 +66,7 @@ int main()
         {
             uint16_t respCode;
 
-            if(i == 2)
+            if(i == 2)          // Send wrong end of packet for segNum == 2
                 sendDataPacket(i, payloadBuffer, msgLen, 0xFFF0);
             else
                 sendDataPacket(i, payloadBuffer, msgLen, 0xFFFF);

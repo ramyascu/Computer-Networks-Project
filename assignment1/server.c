@@ -1,3 +1,5 @@
+/***** COEN 233 Programming Assignment Submitted By: Ramya Padmanabhan(W1191465)*******/
+
 /************* UDP SERVER CODE *******************/
 
 #include <stdio.h>
@@ -9,21 +11,22 @@
 #include <stdint.h>
 #include "common.h"
 
+// Global Variables
 int udpSocket;
 uint8_t inBuffer[1024];
 
-
+// function declarations
 int recvDataPacket(struct dataPacketHdr *hdr, uint8_t *payload, uint16_t *endOfPacket, struct sockaddr_in *clientAddr);
 void sendRejectPacket(uint8_t clientId, uint16_t rejectSubCode, uint8_t recvSegNum, struct sockaddr_in *clientAddr);
 void sendAckPacket(uint8_t clientId, uint8_t recvSegNum, struct sockaddr_in *clientAddr);
 
+// main function
 int main()
 {
-    int nBytes;
-    struct sockaddr_in serverAddr;
-    uint8_t clientId;
-    uint8_t nextSegment;
-    uint8_t payloadBuffer[256];
+    struct sockaddr_in serverAddr; // variable to store server address
+    uint8_t clientId;             
+    uint8_t nextSegment;            // expected segment number
+    uint8_t payloadBuffer[256];     
 
     /*Create UDP socket*/
     udpSocket = socket(PF_INET, SOCK_DGRAM, 0);
@@ -37,6 +40,7 @@ int main()
     /*Bind socket with address struct*/
     bind(udpSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
 
+    // Receive 5 packets from the client without any errors
     nextSegment = 0;
     while(nextSegment < 5)
     {
@@ -45,29 +49,37 @@ int main()
         struct sockaddr_in clientAddr;
         uint16_t recvStatus;
 
-
+        //receive a data packet from the client
         recvStatus = recvDataPacket(&hdr, payloadBuffer, &endOfPacket, &clientAddr);
 
-        if(recvStatus == 0)
+        if(recvStatus == 0) // receive status is 0 if payload length and end of packet are correct
         {
             // Check if segment number is expected
             if(hdr.segNum != nextSegment)
             {
-                if(hdr.segNum != nextSegment - 1)
-                {
-                    printf("ERROR: Out of sequence - Client sent segment %d instead of %d.\n", hdr.segNum, nextSegment);
+                /*if the seg no is not equal to next segment but is equal to the previous seg no, the server will
+                send a rejection code: Duplicate Packet
 
-                    //Transmit reject packet (out of sequence error)
-                    sendRejectPacket(clientId, REJECTION_CODE__OUT_OF_SEQUENCE, hdr.segNum, &clientAddr);
+                or if the seg no is not equal to next segment the, the server will send a rejection code: out of 
+                sequence. 
+                */
 
-                    continue;
-                }
-                else
+                if(hdr.segNum == nextSegment - 1) 
                 {
                     printf("ERROR: Duplicate Packet - Client sent segment %d again.\n", hdr.segNum);
 
                     //Transmit reject packet (duplicate packet)
                     sendRejectPacket(clientId, REJECTION_CODE__DUPLICATE_PACKET, hdr.segNum, &clientAddr);
+
+                    continue;
+                }
+
+                else
+                {
+                    printf("ERROR: Out of sequence - Client sent segment %d instead of %d.\n", hdr.segNum, nextSegment);
+
+                    //Transmit reject packet (out of sequence error)
+                    sendRejectPacket(clientId, REJECTION_CODE__OUT_OF_SEQUENCE, hdr.segNum, &clientAddr);
 
                     continue;
                 }
@@ -82,11 +94,11 @@ int main()
             printf("Message OK. Sending ACK.\n\n");
             // Send acknowledgement packet to client
             sendAckPacket(clientId, hdr.segNum, &clientAddr);
-            nextSegment++;
+            nextSegment++; // expected segment update
         }
         else
         {
-            //Send appropriate reject packet for packet error
+            //Send appropriate reject packet for packet error (Rejection Code: Length Mismatch or End of packet missing)
             sendRejectPacket(clientId, recvStatus, hdr.segNum, &clientAddr);
         }
     }
@@ -94,7 +106,7 @@ int main()
     return 0;
 }
 
-
+// function to receive data packet and do preliminary checks. hdr, payload, endofPacket and clientAddr are the output of this function.
 int recvDataPacket(struct dataPacketHdr *hdr, uint8_t *payload, uint16_t *endOfPacket, struct sockaddr_in *clientAddr)
 {
     uint16_t *endOfPacket1;
@@ -124,7 +136,8 @@ int recvDataPacket(struct dataPacketHdr *hdr, uint8_t *payload, uint16_t *endOfP
     if(hdr->payloadLength != nBytes - sizeof(struct dataPacketHdr) - 2)
     {
         printf("\n");
-        printf("ERROR: Length mismatch\n");
+        printf("ERROR: Length mismatch: Packet size is %u, Payload size should be %lu, but found %u.\n",
+            nBytes, nBytes - sizeof(struct dataPacketHdr) - 2, hdr->payloadLength);
         return REJECTION_CODE__LENGTH_MISMATCH;
     }
 
@@ -145,6 +158,7 @@ int recvDataPacket(struct dataPacketHdr *hdr, uint8_t *payload, uint16_t *endOfP
     return 0;
 }
 
+// function to send Ack packet.
 void sendAckPacket(uint8_t clientId, uint8_t recvSegNum, struct sockaddr_in *clientAddr)
 {
     struct ackPacket ack;
@@ -156,7 +170,7 @@ void sendAckPacket(uint8_t clientId, uint8_t recvSegNum, struct sockaddr_in *cli
 
     sendto(udpSocket, &ack, sizeof(ack), 0, (struct sockaddr *) clientAddr, sizeof(struct sockaddr_in));
 }
-
+// function to sent reject packet to the client
 void sendRejectPacket(uint8_t clientId, uint16_t rejectSubCode, uint8_t recvSegNum, struct sockaddr_in *clientAddr)
 {
     struct rejectPacket rej;

@@ -1,3 +1,5 @@
+/***** COEN 233 Programming Assignment Submitted By: Ramya Padmanabhan(W1191465)*******/
+
 /************* UDP SERVER CODE *******************/
 
 #include <stdio.h>
@@ -13,13 +15,13 @@ int udpSocket;
 uint8_t buffer[1024];
 uint8_t buffer[1024];
 
-
+// Function declaration
 void sendPacket(struct packetHdr hdr,struct clientDevice cd, struct sockaddr_in *clientAddr);
 int recvPacket(struct packetHdr *hdr,struct clientDevice *cd, struct sockaddr_in *clientAddr);
 uint16_t clientDevLookup(struct clientDevice cd);
 
 
-
+//main function
 int main()
 {
     int nBytes;
@@ -40,6 +42,7 @@ int main()
     /*Bind socket with address struct*/
     bind(udpSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
 
+    // Receives access request form client and send appropriate response.
     while(1)
     {
         struct packetHdr hdr;
@@ -63,7 +66,7 @@ int main()
             break;
 
             case PACKET_TYPE__NOT_EXIST:
-            printf("Access denied - not exist\n");
+            printf("Access denied - Subscriber does not exist\n");
             break;
         }
         printf("\n");

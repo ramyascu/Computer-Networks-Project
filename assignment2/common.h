@@ -1,3 +1,4 @@
+// Common data-structures for both client and server
 
 struct __attribute__((__packed__)) packetHdr
 {

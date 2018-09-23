@@ -66,7 +66,7 @@ int main()
         {
             uint16_t respCode;
 
-            if(i == 2)
+            if(i == 2)      // Send incorrect msg length for packet with segNum == 2
                 sendDataPacket(i, payloadBuffer, msgLen, msgLen/4);
             else
                 sendDataPacket(i, payloadBuffer, msgLen, msgLen);
